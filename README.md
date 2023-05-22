@@ -1,1 +1,205 @@
-# htp-biolum-afum
+---
+# One-step soft agar enrichment and isolation of human lung bacteria inhibiting the germination of *Aspergillus* spp. conidia
+### Fabio Palmieri, Margo Magnin, Jérémy Diserens, Manon Gresse, Eric Bernasconi, Julie Pernot, Apiha Shanmuganathan, Aurélien Trompette, Christophe Von Garnier, Thomas Junier, Samuel Neuenschwander, Saskia Bindschedler, Marco Pagni, Angela Koutsokera, Niki Ubags, Pilar Junier
+---
+# R Script for bioluminescence High Throughput assay reading and analysis
+
+This is a R script for the visualization and analysis of bioluminescence data generated in the High-Throughput 96-well plate assay presented in the manuscript below, submitted to the *Journal of Fungi* entitled:
+
+#### "One-step soft agar enrichment and isolation of human lung bacteria inhibiting the germination of *Aspergillus* spp. conidia" 
+by Fabio Palmieri, Margo Magnin, Jérémy Diserens, Manon Gresse, Eric Bernasconi, Julie Pernot, Apiha Shanmuganathan, Aurélien Trompette, Christophe Von Garnier, Thomas Junier, Samuel Neuenschwander, Saskia Bindschedler, Marco Pagni, Angela Koutsokera, Niki Ubags, Pilar Junier.
+
+## Requirements set-up
+### Packages and set of colors:
+Packages used in this script:
+```{r, eval=FALSE}
+library(readxl)
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+```
+
+Vectors of different palettes of colors used in this script:
+```{r}
+pal <- c("red", "forestgreen", "gold1", "deeppink", "darkturquoise", "darkslategrey",
+                     "dodgerblue","green1", "lightgoldenrod1","paleturquoise1", "palegreen1","slateblue1")
+pal2 <- c("slateblue1", "forestgreen", "gold1", "deeppink", "darkturquoise", "darkslategrey",
+                      "dodgerblue","green1", "purple","orange", "blue","firebrick1")
+pal3 <- c("red", "yellow", "blue", "green")
+```
+
+### Import data:
+Importation of data from an .xlsx document, converting data of values extracted from each wells into numeric values and removing NA values.
+Please remember to set you own working directory when using the function "setwd".
+```{r readxl, warning=FALSE}
+library(readxl)
+setwd("C:/Users/palmierif/switchdrive/Institution/BRIDGE Discovery/Papers/JoF manuscript/JoF_Rmarkdown")
+Lum <- read_excel("Lum.xlsx")
+Lum[4:59] <- lapply(Lum[4:59], as.numeric)
+Lum <- na.omit(Lum)
+```
+
+## Data preparation
+### Conversion of data:
+Multiplate reader measured photon emission for 10 seconds. Data were divided by 10 to obtain photons / seconds.
+```{r}
+Lum[4:59] <- Lum[4:59]/10
+```
+### Calculate means:
+3 replicates of each treatments were measured (24 treatments). Merging and mean of these replicates were performed to obtain one set of values per treatments and a novel column including time is added. Measurements were taken every 30 minutes during 48 hours which represents 96 measurements in total.  
+```{r}
+pseudo <- c(1, 2, 8, 9, 10, 11, 12)
+Meanp1 <- c()
+for (i in pseudo){ 
+  Meanp1 <- cbind(Meanp1, apply(Lum[, c(3+i, 15+i, 27+i, 39+i)], 1, mean)) 
+}
+Meanp1  <- as.data.frame(Meanp1)
+
+names.means1 <- c("Mean Asp.ctrl","Mean Asp+cyclo","Mean Asp+b1", "Mean Asp+b2", "Mean Asp+b3", "Mean Asp+b4", "Mean Asp+b5")
+names(Meanp1) <- names.means1
+
+Meanp2 <- c()
+for (i in pseudo){ 
+  Meanp2 <- cbind(Meanp2, apply(Lum[, c(51+i, 63 +i, 75+i, 87+i)], 1, mean)) 
+}
+Meanp2 <- as.data.frame(Meanp2)
+
+names.means2 <- c("Mean ctrl RPMI", "Mean ctrl Mastermix", "Mean ctrl b1", "Mean ctrl b2", "Mean ctrl b3", "Mean ctrl b4", "Mean ctrl b5")
+names(Meanp2)[1:7] <- names.means2
+
+Mean <- c()
+Mean <- Meanp1[1:7]
+Mean[8:14] <- Meanp2[1:7]
+Mean <- as.data.frame(Mean)
+Mean$Time <- c(0:95) 
+
+names <- c("A.fumigatus Ctrl", "A.fumigatus + Cycloheximide", "A.fumigatus + b1", "A.fumigatus + b2", "A.fumigatus + b3", "A.fumigatus + b4", "A.fumigatus + b5", "RPMI ctrl", "Mastermix ctrl", "Mastermix + b1 ctrl", "Mastermix + b2 ctrl", "Mastermix + b3 ctrl","Mastermix + b4 ctrl","Mastermix + b5 ctrl", "Time")
+names(Mean)[1:15] <- names
+```
+### Calculate standard deviation:
+Two standard deviations were calculated to be used in two different ways of visualization of our data in the next steps. Standard deviations were used to obtain error bars for visualization.
+```{r}
+# Standard deviation calculation for individuals plot
+pseudo <- c(1, 2, 8, 9, 10, 11, 12)
+Sd1 <- c()
+for (i in pseudo){ 
+  Sd1 <- cbind(Sd1, apply(Lum[, c(3+i, 15+i, 27+i, 39+i)], 1, sd)) 
+}
+Sd1  <- as.data.frame(Sd1)
+names.sd1 <- c("Sd Asp.ctrl","Sd Asp+cyclo","Sd Asp+b1", "Sd Asp+b2", "Sd Asp+b3", "Sd Asp+b4", "Sd Asp+b5")
+names(Sd1) <- names.sd1
+
+Sd2 <- c()
+for (i in pseudo){ 
+  Sd2 <- cbind(Sd2, apply(Lum[, c(51+i, 63 +i, 75+i, 87+i)], 1, sd)) 
+}
+Sd2  <- as.data.frame(Sd2)
+names.sd2 <- c("Sd ctrl RPMI", "Sd ctrl Mastermix", "Sd ctrl b1", "Sd ctrl b2", "Sd ctrl b3", "Sd ctrl b4", "Sd ctrl b5")
+names(Sd2)[1:7] <- names.sd2
+
+Standard.deviation <- c()
+Standard.deviation <- Sd1[1:7]
+Standard.deviation[8:14] <- Sd2[1:7]
+
+# Standard Deviation multiple plot
+Sdm1 <- c()
+for (i in pseudo){ 
+  Sdm1 <- c(Sdm1, apply(Lum[, c(3+i, 15+i, 27+i, 39+i)], 1, sd)) 
+}
+
+Sdm2 <- c()
+for (i in pseudo){ 
+  Sdm2 <- c(Sdm2, apply(Lum[, c(51+i, 63 +i, 75+i, 87+i)], 1, sd)) 
+}
+
+Standard.deviation.multiple <- c()
+Standard.deviation.multiple <- append(Sdm1, Sdm2)
+```
+
+## Creation of Data sets
+Two different data sets are made for 2 different ways of visualization.
+
+### Data set for individual plots:
+This data set is used to visualize each treatment alone on an individual plot. This data set is composed of the means of our treatments of interest and their standard deviation. The first data set (dfic) is including controls, while the second (dfi) does not.
+```{r}
+dfic <- c()
+dfic <- Mean[1:15]
+dfic[16:29] <- Standard.deviation
+dfi <- subset(dfic, select = c(1:7, 16:22, 15))
+```
+
+### Data sets for multiple plot:
+This data set is used to observe all the treatments together on a single plot. This data set is composed of the same information as the previous one. The first data set (dfmc) is including controls, while the second (dfm) does not.
+
+```{r warning=FALSE, message=FALSE}
+library(tidyverse)
+dfmc <- gather(Mean, Treatment, Value, c("A.fumigatus Ctrl", "A.fumigatus + Cycloheximide", "A.fumigatus + b1", "A.fumigatus + b2", "A.fumigatus + b3","A.fumigatus + b4", "A.fumigatus + b5", "RPMI ctrl", "Mastermix ctrl", "Mastermix + b1 ctrl", "Mastermix + b2 ctrl","Mastermix + b3 ctrl","Mastermix + b4 ctrl","Mastermix + b5 ctrl"))
+dfmc$Sd <- Standard.deviation.multiple
+dfmc$Sd <- as.numeric(dfmc$Sd)
+dfm <- dfmc[dfmc$Treatment %in% c("A.fumigatus Ctrl", "A.fumigatus + Cycloheximide", "A.fumigatus + b1", "A.fumigatus + b2", "A.fumigatus + b3","A.fumigatus + b4", "A.fumigatus + b5"),]
+```
+
+## Visualization of data
+### Individual plots:
+This code plots individually each of our Treatment. Controls were not included since the dataset "dfi" was used.
+```{r warning=FALSE}
+t = 0
+for (i in dfi[1:7]) {
+  t = t + 1
+  p = ggplot(data = dfi, aes(x = Time, y = i, group = 1, color = pal2[t])) +
+    geom_line() + geom_point() +
+    geom_ribbon(aes(ymin = i - dfi[, c(7 + t)], ymax = i + dfi[, c(7 + t)]),
+                alpha = 0.5, fill = "azure", colour = pal2[t]) +
+    labs(y = "Bioluminescence [photon/sec]", x = "time [1 = 30mn]") +
+    ggtitle(names[t]) +
+    theme(panel.grid.major = element_line(color='grey'),
+          panel.grid.minor = element_line(color = 'grey'),
+          panel.background = element_rect(fill='transparent', color=NA))+
+    scale_color_identity()+
+    scale_y_continuous(limits = c(-10,300), expand = c(0,0))  
+  print(p)
+}
+```
+
+### Multiple plot:
+This code plots all our treatments together on a single plot. Controls were not included since the dataset "dfm" was used.
+```{r warning=FALSE}
+ggplot(dfm,aes(x=Time, y=Value, color=Treatment))+
+  geom_line(size = 1.5)+ 
+  scale_color_manual(values = pal, limits=c("A.fumigatus Ctrl", "A.fumigatus + Cycloheximide", "A.fumigatus + b1", "A.fumigatus + b2", "A.fumigatus + b3","A.fumigatus + b4", "A.fumigatus + b5"))+
+  labs(y= "Bioluminescence [photon/sec]", x = "time [1 = 30mn]")+
+  ggtitle("Evolution of Bioluminescence of different treatment during 48h")+
+  theme(legend.text = element_text(size=6),
+        legend.title = element_text(size=6),
+        legend.key.size = unit(0.5, 'cm'),
+        title = element_text(size=10),
+        axis.ticks = element_line(color='black'),
+        panel.grid.major = element_line(color='grey'),
+        panel.grid.minor = element_line(color = 'grey'),
+        panel.background = element_rect(fill='transparent', color=NA),
+        legend.background = element_rect(fill='transparent'),
+        aspect.ratio = 1)+
+  scale_y_continuous(limits = c(0,6000), expand = c(0,0))
+```
+This second code removes *Aspergillus fumigatus* treatment alone to obtain a better visualization of results.
+```{r warning=FALSE}
+dfm2 <- dfmc[dfmc$Treatment %in% c("A.fumigatus + Cycloheximide", "A.fumigatus + b1", "A.fumigatus + b2", "A.fumigatus + b3","A.fumigatus + b4", "A.fumigatus + b5"),]
+
+ggplot(dfm2,aes(x=Time, y=Value, color=Treatment))+
+  geom_line(size = 1.5)+ 
+  scale_color_manual(values = pal, limits=c("A.fumigatus + Cycloheximide", "A.fumigatus + b1", "A.fumigatus + b2", "A.fumigatus + b3","A.fumigatus + b4", "A.fumigatus + b5"))+
+  labs(y= "Bioluminescence [photon/sec]", x = "time [1 = 30mn]")+
+  ggtitle("Evolution of Bioluminescence of different treatment during 48h")+
+  theme(legend.text = element_text(size=6),
+        legend.title = element_text(size=6),
+        legend.key.size = unit(0.5, 'cm'),
+        title = element_text(size=10),
+        axis.ticks = element_line(color='black'),
+        panel.grid.major = element_line(color='grey'),
+        panel.grid.minor = element_line(color = 'grey'),
+        panel.background = element_rect(fill='transparent', color=NA),
+        legend.background = element_rect(fill='transparent'),
+        aspect.ratio = 1)+
+  scale_y_continuous(limits = c(0,250), expand = c(0,0))
+
+```
